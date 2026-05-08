@@ -29,6 +29,20 @@ maturin develop  # builds and installs taskman_tui.taskman_native into .venv
 python -m taskman_tui
 ```
 
+## Local Pre-commit Hook
+
+Taskman includes a reusable pre-commit hook script at `.hooks/pre-commit`.
+It runs the same categories of checks as CI:
+
+- Rust format, lint, and tests.
+- Python lint, format check, extension build, smoke test, and pytest.
+
+Install it into your local git hooks directory:
+
+```bash
+cp .hooks/pre-commit .git/hooks/pre-commit
+```
+
 ## How the Build System Works
 
 Taskman is a mixed Rust + Python project. Rust builds the native extension, and Python hosts the TUI.

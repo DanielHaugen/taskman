@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  rust:
+    name: Rust fmt/lint/test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Rust format check
+        run: cargo fmt --all --check
+
+      - name: Rust lint (clippy)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Rust tests
+        run: cargo test --workspace --all-targets
+
+  python:
+    name: Python lint/format/test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Create Python virtualenv
+        run: python -m venv .venv
+
+      - name: Install Python tooling
+        run: |
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install maturin ruff black pytest
+
+      - name: Python lint (ruff)
+        run: .venv/bin/ruff check python
+
+      - name: Python format check (black)
+        run: .venv/bin/black --check python
+
+      - name: Build and install extension for tests
+        run: .venv/bin/maturin develop
+
+      - name: Python smoke test
+        run: |
+          .venv/bin/python -c "from taskman_tui.client import TaskmanClient; c=TaskmanClient(); s=c.fetch_snapshot(); print('processes', len(s['processes']))"
+
+      - name: Python tests (allow no tests)
+        shell: bash
+        run: |
+          set +e
+          .venv/bin/pytest -q
+          status=$?
+          set -e
+          if [[ $status -ne 0 && $status -ne 5 ]]; then
+            exit $status
+          fi

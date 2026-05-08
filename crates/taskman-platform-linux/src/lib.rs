@@ -1,8 +1,8 @@
 use std::cmp::Ordering;
 use std::sync::Mutex;
 
-use nix::sched::{sched_setaffinity, CpuSet};
-use nix::sys::signal::{kill, Signal};
+use nix::sched::{CpuSet, sched_setaffinity};
+use nix::sys::signal::{Signal, kill};
 use nix::unistd::Pid;
 use sysinfo::{ProcessesToUpdate, System};
 use taskman_domain::{

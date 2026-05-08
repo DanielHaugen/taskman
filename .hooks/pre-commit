@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+supports_color() {
+  [[ -t 1 ]] && [[ -z "${NO_COLOR:-}" ]]
+}
+
+if supports_color; then
+  C_RESET='\033[0m'
+  C_BOLD='\033[1m'
+  C_DIM='\033[2m'
+  C_BLUE='\033[34m'
+  C_CYAN='\033[36m'
+  C_GREEN='\033[32m'
+  C_YELLOW='\033[33m'
+  C_RED='\033[31m'
+else
+  C_RESET=''
+  C_BOLD=''
+  C_DIM=''
+  C_BLUE=''
+  C_CYAN=''
+  C_GREEN=''
+  C_YELLOW=''
+  C_RED=''
+fi
+
+STEP=0
+
+log_info() {
+  printf '%b[pre-commit]%b %s\n' "$C_BLUE" "$C_RESET" "$*"
+}
+
+log_cmd() {
+  printf '%b[cmd]%b %s\n' "$C_DIM" "$C_RESET" "$*"
+}
+
+log_step() {
+  STEP=$((STEP + 1))
+  printf '\n%b[%02d]%b %b%s%b\n' "$C_CYAN" "$STEP" "$C_RESET" "$C_BOLD" "$*" "$C_RESET"
+}
+
+log_ok() {
+  printf '%b[ok]%b %s\n' "$C_GREEN" "$C_RESET" "$*"
+}
+
+log_warn() {
+  printf '%b[warn]%b %s\n' "$C_YELLOW" "$C_RESET" "$*"
+}
+
+fail() {
+  printf '%b[error]%b %s\n' "$C_RED" "$C_RESET" "$*" >&2
+  exit 1
+}
+
+run_step() {
+  local label="$1"
+  shift
+  log_step "$label"
+  log_cmd "$*"
+  if "$@"; then
+    log_ok "$label"
+  else
+    fail "$label failed"
+  fi
+}
+
+run_step_shell() {
+  local label="$1"
+  local command="$2"
+  log_step "$label"
+  log_cmd "$command"
+  if bash -lc "$command"; then
+    log_ok "$label"
+  else
+    fail "$label failed"
+  fi
+}
+
+if ! command -v git >/dev/null 2>&1; then
+  fail "git is required"
+fi
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
+log_info "Repository: $REPO_ROOT"
+
+if ! command -v cargo >/dev/null 2>&1; then
+  fail "cargo is required"
+fi
+
+if ! command -v rustup >/dev/null 2>&1; then
+  fail "rustup is required"
+fi
+
+if ! command -v python3 >/dev/null 2>&1; then
+  fail "python3 is required"
+fi
+
+VENV_PATH="${VENV_PATH:-.venv}"
+PY_BIN="$VENV_PATH/bin/python"
+PIP_BIN="$VENV_PATH/bin/pip"
+RUFF_BIN="$VENV_PATH/bin/ruff"
+BLACK_BIN="$VENV_PATH/bin/black"
+MATURIN_BIN="$VENV_PATH/bin/maturin"
+PYTEST_BIN="$VENV_PATH/bin/pytest"
+
+if [[ ! -x "$PY_BIN" ]]; then
+  log_step "Create virtual environment"
+  log_cmd "python3 -m venv $VENV_PATH"
+  python3 -m venv "$VENV_PATH"
+  log_ok "Create virtual environment"
+fi
+
+run_step "Install hook tooling" "$PIP_BIN" install --upgrade pip
+run_step "Install Python QA tools" "$PIP_BIN" install ruff black maturin pytest
+
+run_step "Ensure Rust components" rustup component add rustfmt clippy
+
+run_step "Rust format check" cargo fmt --all --check
+
+run_step "Rust lint (clippy)" cargo clippy --workspace --all-targets -- -D warnings
+
+run_step "Rust tests" cargo test --workspace --all-targets
+
+run_step "Python lint (ruff)" "$RUFF_BIN" check python
+
+run_step "Python format check (black)" "$BLACK_BIN" --check python
+
+run_step "Build and install native module" "$MATURIN_BIN" develop
+
+run_step_shell "Python smoke test" "$PY_BIN -c \"from taskman_tui.client import TaskmanClient; c=TaskmanClient(); s=c.fetch_snapshot(); print('processes', len(s['processes']))\""
+
+log_step "Python tests (allow no tests)"
+log_cmd "$PYTEST_BIN -q"
+set +e
+"$PYTEST_BIN" -q
+status=$?
+set -e
+
+if [[ $status -ne 0 && $status -ne 5 ]]; then
+  fail "pytest failed with exit code $status"
+fi
+
+if [[ $status -eq 5 ]]; then
+  log_warn "No Python tests collected (pytest exit code 5)"
+else
+  log_ok "Python tests"
+fi
+
+printf '\n%bAll CI-equivalent checks passed%b\n' "$C_BOLD$C_GREEN" "$C_RESET"

@@ -67,10 +67,14 @@ class TaskManagerApp(App[None]):
                     yield Static("Waiting for first snapshot...", id="performance-text")
             with TabPane("Services", id="services"):
                 with Container(id="services-view"):
-                    yield Static("Service support is adapter-backed and platform-aware.")
+                    yield Static(
+                        "Service support is adapter-backed and platform-aware."
+                    )
             with TabPane("Startup", id="startup"):
                 with Container(id="startup-view"):
-                    yield Static("Startup management panel scaffolded for OS-specific adapters.")
+                    yield Static(
+                        "Startup management panel scaffolded for OS-specific adapters."
+                    )
             with TabPane("Details", id="details"):
                 with Container(id="details-view"):
                     yield Static("Detailed process metadata view scaffolded.")
@@ -121,7 +125,9 @@ class TaskManagerApp(App[None]):
         system = snapshot["system"]
         memory_pct = 0.0
         if system["total_memory_bytes"] > 0:
-            memory_pct = 100.0 * system["used_memory_bytes"] / system["total_memory_bytes"]
+            memory_pct = (
+                100.0 * system["used_memory_bytes"] / system["total_memory_bytes"]
+            )
 
         performance = self.query_one("#performance-text", Static)
         performance.update(
@@ -157,7 +163,9 @@ class TaskManagerApp(App[None]):
             return None
         return self._visible_pids[row]
 
-    def _run_selected_action(self, action: ActionName, *, priority: int | None = None) -> None:
+    def _run_selected_action(
+        self, action: ActionName, *, priority: int | None = None
+    ) -> None:
         pid = self._selected_pid()
         if pid is None:
             self.notify("No process selected", severity="warning")
@@ -174,30 +182,42 @@ class TaskManagerApp(App[None]):
 
     def action_kill_selected(self) -> None:
         if not self._capabilities["can_kill"]:
-            self.notify("Kill action is unavailable on this platform", severity="warning")
+            self.notify(
+                "Kill action is unavailable on this platform", severity="warning"
+            )
             return
         self._run_selected_action("kill")
 
     def action_suspend_selected(self) -> None:
         if not self._capabilities["can_suspend"]:
-            self.notify("Suspend action is unavailable on this platform", severity="warning")
+            self.notify(
+                "Suspend action is unavailable on this platform", severity="warning"
+            )
             return
         self._run_selected_action("suspend")
 
     def action_resume_selected(self) -> None:
         if not self._capabilities["can_resume"]:
-            self.notify("Resume action is unavailable on this platform", severity="warning")
+            self.notify(
+                "Resume action is unavailable on this platform", severity="warning"
+            )
             return
         self._run_selected_action("resume")
 
     def action_priority_selected(self) -> None:
         if not self._capabilities["can_set_priority"]:
-            self.notify("Set priority action is unavailable on this platform", severity="warning")
+            self.notify(
+                "Set priority action is unavailable on this platform",
+                severity="warning",
+            )
             return
         self._run_selected_action("set_priority", priority=5)
 
     def action_affinity_selected(self) -> None:
         if not self._capabilities["can_set_affinity"]:
-            self.notify("Set affinity action is unavailable on this platform", severity="warning")
+            self.notify(
+                "Set affinity action is unavailable on this platform",
+                severity="warning",
+            )
             return
         self._run_selected_action("set_affinity")
