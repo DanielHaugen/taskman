@@ -1,0 +1,11 @@
+# Rust
+target/
+*.so
+
+# Python
+__pycache__/
+
+# Misc
+*.env
+.venv/
+*.swp

@@ -1,0 +1,11 @@
+[package]
+name = "taskman-platform-linux"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+taskman-domain = { path = "../taskman-domain" }
+nix.workspace = true
+libc.workspace = true
+sysinfo.workspace = true

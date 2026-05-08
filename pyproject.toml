@@ -1,0 +1,25 @@
+[build-system]
+requires = ["maturin>=1.8,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "taskman-tui"
+version = "0.1.0"
+description = "Windows 11 style task manager TUI backed by Rust and PyO3"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "textual>=0.85,<1.0",
+]
+
+[project.scripts]
+taskman-tui = "taskman_tui.__main__:main"
+
+[tool.maturin]
+manifest-path = "crates/taskman-bridge/Cargo.toml"
+module-name = "taskman_tui.taskman_native"
+python-source = "python"
+features = ["pyo3/extension-module"]
+
+[tool.ruff]
+line-length = 100

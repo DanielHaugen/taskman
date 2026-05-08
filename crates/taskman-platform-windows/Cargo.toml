@@ -1,0 +1,8 @@
+[package]
+name = "taskman-platform-windows"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+taskman-domain = { path = "../taskman-domain" }
